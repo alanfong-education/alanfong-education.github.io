@@ -1,29 +1,25 @@
 # AlanFong Education — GitHub Pages pilot
 
-Three existing public teaching resources, grouped under one proposed address.
+Three existing public teaching resources, grouped under [AlanFong Education](https://alanfong-education.github.io/).
 
-## Proposed public routes
+## Public routes
 
-These addresses are planned, not live until GitHub Pages deployment succeeds.
-
-- `https://alanfong-education.github.io/`
-- `https://alanfong-education.github.io/pairwheel/`
-- `https://alanfong-education.github.io/circle-visualizer/`
-- `https://alanfong-education.github.io/circle-mastery/`
+- [Homepage](https://alanfong-education.github.io/)
+- [PairWheel](https://alanfong-education.github.io/pairwheel/)
+- [Circle Reference Visualizer](https://alanfong-education.github.io/circle-visualizer/)
+- [Circle Geometry Mastery Sheet](https://alanfong-education.github.io/circle-mastery/)
 
 The display name is **AlanFong Education**. Use stable, lowercase project slugs so later category changes do not require changing shared links.
 
-## Publishing
+## Structure and updates
 
-1. Create the free GitHub organisation `alanfong-education`, owned by the existing personal account. Name availability must be confirmed by GitHub's registration form.
-2. Create the public repository `alanfong-education/alanfong-education.github.io`.
-3. Push this directory's contents to its `main` branch.
-4. In repository **Settings → Pages**, select **Deploy from a branch**, branch **main**, folder **/docs**.
-5. Wait for deployment, then verify all four public routes and their interactions on desktop and mobile.
+The free GitHub organisation `alanfong-education` owns the public repository `alanfong-education/alanfong-education.github.io`. Its owner is the personal account `aiismypower-cell`.
+
+GitHub Pages publishes from branch **main**, folder **/docs**, with HTTPS enforced. Push reviewed changes to `main`, wait for the **pages-build-deployment** workflow, then verify affected public routes and interactions. The local project generators remain authoritative for future app changes; copy only intended public release files into this repository.
 
 `docs/` is the complete publication directory. It contains the landing page, three unchanged public applications, `.nojekyll`, and a favicon. It contains no source-project folders, credentials, assessment originals, student records, or local QA files.
 
-The three app files were compared byte for byte with their existing Netlify releases on 3 October 2026. The landing page is new. Existing Netlify sites and the original project files were not modified.
+The three app files were compared byte for byte with their existing Netlify releases and with their new GitHub Pages responses on 3 October 2026. The landing page is new. Existing Netlify sites and the original project files were not modified.
 
 ## Migration considerations
 
