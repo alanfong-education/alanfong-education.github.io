@@ -1,0 +1,1249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PairWheel — spin both wheels, get a match</title>
+<meta name="description" content="Two random picker wheels: the left picks a group, the right picks an object. One button spins both and announces the pairing.">
+<style>
+  :root {
+    --bg: oklch(0.11 0 0);
+    --stage-glow-l: oklch(0.84 0.17 118 / 0.07);
+    --stage-glow-r: oklch(0.62 0.20 25 / 0.08);
+    --surface: oklch(0.165 0.006 110);
+    --surface-2: oklch(0.21 0.008 110);
+    --line: oklch(0.30 0.012 110);
+    --ink: oklch(0.965 0.006 110);
+    --muted: oklch(0.72 0.018 110);
+    --lime: oklch(0.84 0.17 118);
+    --lime-ink: oklch(0.19 0.05 120);
+    --coral: oklch(0.62 0.20 25);
+    --coral-strong: oklch(0.56 0.21 25);
+    --focus: oklch(0.80 0.13 230);
+    --radius: 20px;
+    --z-sticky: 10;
+    --z-overlay: 40;
+    --z-confetti: 50;
+    --font: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100%;
+    font-family: var(--font);
+    color: var(--ink);
+    background:
+      radial-gradient(52rem 36rem at 18% 8%, var(--stage-glow-l), transparent 60%),
+      radial-gradient(52rem 36rem at 82% 8%, var(--stage-glow-r), transparent 60%),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :is(button, textarea, input):focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+  ::placeholder { color: var(--muted); opacity: 1; }
+
+  /* ---------- Header ---------- */
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem clamp(1rem, 3vw, 2rem) 0.4rem;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+  .brand h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .brand h1 .half { color: var(--lime); }
+  .tag { margin: 0; color: var(--muted); font-size: 0.95rem; }
+  .top-actions { display: flex; gap: 0.5rem; }
+  .ghost-btn {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: background 160ms ease-out, border-color 160ms ease-out;
+  }
+  .ghost-btn:hover { background: var(--surface-2); border-color: oklch(0.4 0.01 110); }
+  .ghost-btn[aria-pressed="false"] { color: var(--muted); }
+
+  /* ---------- Stage layout ---------- */
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(240px, 24vw, 320px) minmax(0, 1fr);
+    grid-template-areas: "g c o";
+    gap: clamp(0.9rem, 2vw, 1.6rem);
+    padding: 0.8rem clamp(1rem, 3vw, 2rem) 2.5rem;
+    max-width: 1500px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  .panel-g { grid-area: g; }
+  .panel-o { grid-area: o; }
+  .center  { grid-area: c; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: clamp(0.9rem, 1.6vw, 1.4rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    min-width: 0;
+  }
+  .panel-head { display: flex; align-items: center; gap: 0.6rem; }
+  .panel-head h2 {
+    margin: 0;
+    font-size: 1.12rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+  .count {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .panel-g h2 { color: var(--lime); }
+  .panel-o h2 { color: oklch(0.76 0.16 27); }
+
+  /* ---------- Wheel ---------- */
+  .wheel-wrap {
+    position: relative;
+    aspect-ratio: 1;
+    max-width: 560px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .wheel-wrap canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .hub {
+    position: absolute;
+    left: 50%; top: 50%;
+    translate: -50% -50%;
+    width: 24%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: oklch(0.145 0.008 110);
+    border: 3px solid var(--hub-c, var(--lime));
+    color: var(--ink);
+    font-weight: 800;
+    font-size: clamp(0.62rem, 1.3vw, 0.85rem);
+    letter-spacing: 0.08em;
+    box-shadow: 0 4px 18px oklch(0 0 0 / 0.45);
+    transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .hub:hover { transform: scale(1.06); }
+  .hub:active { transform: scale(0.95); }
+  .panel-o .hub { --hub-c: var(--coral); }
+
+  .pointer {
+    position: absolute;
+    top: 50%;
+    width: 4.2%;
+    min-width: 16px;
+    aspect-ratio: 0.82;
+    background: var(--ink);
+    filter: drop-shadow(0 2px 4px oklch(0 0 0 / 0.5));
+    transition: transform 70ms ease-out;
+    pointer-events: none;
+  }
+  .pointer-r {
+    right: -1.2%;
+    translate: 0 -50%;
+    clip-path: polygon(100% 0, 100% 100%, 0 50%);
+    transform-origin: 100% 50%;
+  }
+  .pointer-l {
+    left: -1.2%;
+    translate: 0 -50%;
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+    transform-origin: 0 50%;
+  }
+  .pointer-r.kick { transform: rotate(-14deg); }
+  .pointer-l.kick { transform: rotate(14deg); }
+
+  .last {
+    margin: 0;
+    min-height: 1.5rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .last b { color: var(--ink); font-weight: 700; }
+
+  /* ---------- Editors ---------- */
+  .editor { display: flex; flex-direction: column; gap: 0.55rem; }
+  .editor textarea {
+    width: 100%;
+    min-height: 9.5rem;
+    resize: vertical;
+    background: oklch(0.135 0.006 110);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 0.7rem 0.85rem;
+    font: 500 0.95rem/1.55 var(--font);
+    transition: border-color 160ms ease-out;
+  }
+  .editor textarea:hover { border-color: oklch(0.38 0.012 110); }
+  .ed-tools { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+  .tool-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 0.38rem 0.75rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--ink);
+    transition: background 140ms ease-out;
+  }
+  .tool-btn:hover { background: oklch(0.26 0.01 110); }
+
+  /* ---------- Center column ---------- */
+  .center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.1rem;
+    padding-top: clamp(0.5rem, 4vh, 3.2rem);
+    position: sticky;
+    top: 1rem;
+  }
+  .big-spin {
+    width: clamp(120px, 13vw, 168px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: none;
+    background: var(--lime);
+    color: var(--lime-ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1rem;
+    box-shadow:
+      0 0 0 6px oklch(0.84 0.17 118 / 0.14),
+      0 10px 34px oklch(0.84 0.17 118 / 0.25);
+    transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 160ms ease-out;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .big-spin .word {
+    font-size: clamp(1.5rem, 2.2vw, 1.9rem);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+  .big-spin .sub { font-size: 0.82rem; font-weight: 700; opacity: 0.85; }
+  .big-spin:hover {
+    transform: scale(1.045);
+    box-shadow:
+      0 0 0 8px oklch(0.84 0.17 118 / 0.18),
+      0 14px 44px oklch(0.84 0.17 118 / 0.34);
+  }
+  .big-spin:active { transform: scale(0.96); }
+  .big-spin[data-busy="1"] {
+    filter: saturate(0.65) brightness(0.85);
+    pointer-events: none;
+  }
+  .hint {
+    margin: -0.4rem 0 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: center;
+    min-height: 1.2rem;
+  }
+  .hint.warn { color: oklch(0.78 0.15 60); font-weight: 600; }
+
+  .opt {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+    user-select: none;
+  }
+  .opt input {
+    width: 1.05rem; height: 1.05rem;
+    accent-color: var(--lime);
+  }
+
+  .match {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .match .m-title {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .pair {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .chip {
+    display: inline-block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    padding: 0.35rem 0.85rem;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 1.02rem;
+    line-height: 1.35;
+  }
+  .chip-g { background: var(--lime); color: var(--lime-ink); }
+  .chip-o { background: var(--coral); color: #fff; }
+  .x { font-weight: 800; color: var(--muted); font-size: 0.95rem; }
+  .match .empty { color: var(--muted); font-size: 0.92rem; margin: 0.2rem 0; }
+
+  .history { width: 100%; }
+  .hist-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.35rem;
+  }
+  .hist-head h3 { margin: 0; font-size: 0.9rem; font-weight: 700; color: var(--muted); }
+  .link-btn {
+    background: none; border: none;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    padding: 0.2rem;
+  }
+  .link-btn:hover { color: var(--ink); }
+  .hist-list {
+    list-style: none;
+    margin: 0; padding: 0;
+    display: flex; flex-direction: column; gap: 0.3rem;
+    max-height: 15rem;
+    overflow-y: auto;
+  }
+  .hist-list li {
+    font-size: 0.88rem;
+    color: var(--muted);
+    background: oklch(0.14 0.006 110);
+    border: 1px solid oklch(0.24 0.01 110);
+    border-radius: 9px;
+    padding: 0.4rem 0.6rem;
+    overflow-wrap: anywhere;
+  }
+  .hist-list b { color: var(--ink); font-weight: 700; }
+  .hist-list .hx { color: oklch(0.62 0.1 27); font-weight: 800; padding: 0 0.25rem; }
+
+  /* ---------- Result overlay ---------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.2rem;
+    background: oklch(0.05 0 0 / 0.72);
+    animation: ov-in 220ms ease-out;
+  }
+  .overlay[hidden] { display: none; }
+  @keyframes ov-in { from { opacity: 0; } }
+  .ov-card {
+    background: var(--surface-2);
+    border: 1px solid oklch(0.34 0.012 110);
+    border-radius: 26px;
+    padding: clamp(1.4rem, 4vw, 2.6rem) clamp(1.4rem, 5vw, 3.2rem);
+    max-width: min(640px, 94vw);
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 30px 80px oklch(0 0 0 / 0.55);
+    animation: card-pop 340ms cubic-bezier(0.22, 1.4, 0.36, 1);
+  }
+  @keyframes card-pop {
+    from { transform: scale(0.82); opacity: 0; }
+  }
+  .ov-title {
+    margin: 0 0 1.1rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .ov-pair {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 1.5rem;
+  }
+  .ov-pair .chip {
+    font-size: clamp(1.35rem, 4.2vw, 2rem);
+    padding: 0.5rem 1.2rem;
+    border-radius: 16px;
+    text-wrap: balance;
+  }
+  .ov-pair .x { font-size: 1.25rem; }
+  .ov-actions {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    border-radius: 12px;
+    border: 1px solid transparent;
+    padding: 0.62rem 1.15rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), filter 140ms ease-out;
+  }
+  .btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+  .btn:active { transform: translateY(0) scale(0.97); }
+  .btn-primary { background: var(--lime); color: var(--lime-ink); }
+  .btn-danger { background: none; border-color: var(--coral); color: oklch(0.78 0.15 27); }
+  .btn-danger:hover { background: oklch(0.62 0.2 25 / 0.14); }
+  .btn-plain { background: var(--surface); border-color: var(--line); color: var(--ink); }
+
+  #confetti {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: var(--z-confetti);
+    pointer-events: none;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1020px) {
+    .stage {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-areas:
+        "g o"
+        "c c";
+    }
+    .center { position: static; padding-top: 0; }
+    .match, .history { max-width: 480px; }
+  }
+  @media (max-width: 640px) {
+    .stage {
+      grid-template-columns: 1fr;
+      grid-template-areas: "g" "o" "c";
+    }
+    .panel { gap: 0.7rem; }
+    .brand h1 { font-size: 1.3rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <h1>Pair<span class="half">Wheel</span></h1>
+    <p class="tag">Spin both wheels, get a match.</p>
+  </div>
+  <div class="top-actions">
+    <button class="ghost-btn" id="soundBtn" aria-pressed="true">🔊 Sound on</button>
+    <button class="ghost-btn" id="fsBtn">⛶ Fullscreen</button>
+  </div>
+</header>
+
+<main class="stage">
+
+  <section class="panel panel-g" aria-labelledby="hG">
+    <header class="panel-head">
+      <h2 id="hG">Groups</h2>
+      <span class="count" id="countG">0</span>
+    </header>
+    <div class="wheel-wrap">
+      <canvas id="canvasG"></canvas>
+      <button class="hub" id="hubG" aria-label="Spin the groups wheel">SPIN</button>
+      <div class="pointer pointer-r" id="ptrG"></div>
+    </div>
+    <p class="last" aria-live="polite">Last pick: <b id="lastG">—</b></p>
+    <div class="editor">
+      <textarea id="taG" aria-label="Group entries, one per line" spellcheck="false" placeholder="One group per line"></textarea>
+      <div class="ed-tools">
+        <button class="tool-btn" data-act="shuffle" data-w="g">Shuffle</button>
+        <button class="tool-btn" data-act="sort" data-w="g">Sort A–Z</button>
+        <button class="tool-btn" data-act="reset" data-w="g">Restore defaults</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="center" aria-label="Spin controls and results">
+    <button class="big-spin" id="spinBoth">
+      <span class="word">SPIN</span>
+      <span class="sub">both wheels</span>
+    </button>
+    <p class="hint" id="hint">or press Space</p>
+    <label class="opt">
+      <input type="checkbox" id="autoRemove">
+      Remove winners after each spin
+    </label>
+
+    <div class="match" aria-live="polite">
+      <p class="m-title">Latest match</p>
+      <div id="matchBody"><p class="empty">Nothing yet — give it a spin.</p></div>
+    </div>
+
+    <div class="history">
+      <div class="hist-head">
+        <h3>Past pairs</h3>
+        <button class="link-btn" id="clearHist">Clear history</button>
+      </div>
+      <ol class="hist-list" id="histList"></ol>
+    </div>
+  </section>
+
+  <section class="panel panel-o" aria-labelledby="hO">
+    <header class="panel-head">
+      <h2 id="hO">Objects</h2>
+      <span class="count" id="countO">0</span>
+    </header>
+    <div class="wheel-wrap">
+      <canvas id="canvasO"></canvas>
+      <button class="hub" id="hubO" aria-label="Spin the objects wheel">SPIN</button>
+      <div class="pointer pointer-l" id="ptrO"></div>
+    </div>
+    <p class="last" aria-live="polite">Last pick: <b id="lastO">—</b></p>
+    <div class="editor">
+      <textarea id="taO" aria-label="Object entries, one per line" spellcheck="false" placeholder="One object per line"></textarea>
+      <div class="ed-tools">
+        <button class="tool-btn" data-act="shuffle" data-w="o">Shuffle</button>
+        <button class="tool-btn" data-act="sort" data-w="o">Sort A–Z</button>
+        <button class="tool-btn" data-act="reset" data-w="o">Restore defaults</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="ovTitle" hidden>
+  <div class="ov-card">
+    <p class="ov-title" id="ovTitle">The wheels have spoken 🎉</p>
+    <div class="ov-pair">
+      <span class="chip chip-g" id="ovG"></span>
+      <span class="x">gets</span>
+      <span class="chip chip-o" id="ovO"></span>
+    </div>
+    <div class="ov-actions">
+      <button class="btn btn-primary" id="ovAgain">Spin again</button>
+      <button class="btn btn-danger" id="ovRemove">Remove both from wheels</button>
+      <button class="btn btn-plain" id="ovClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<script>
+'use strict';
+
+/* ============ Constants & helpers ============ */
+const TAU = Math.PI * 2;
+const $ = (id) => document.getElementById(id);
+const mod = (a, m) => ((a % m) + m) % m;
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+function rand() {
+  const u = new Uint32Array(1);
+  crypto.getRandomValues(u);
+  return u[0] / 4294967296;
+}
+
+const PALETTE = [
+  { fill: 'oklch(0.84 0.17 118)', text: '#1a2008' },
+  { fill: 'oklch(0.66 0.14 195)', text: '#ffffff' },
+  { fill: 'oklch(0.80 0.15 75)',  text: '#241a04' },
+  { fill: 'oklch(0.60 0.17 258)', text: '#ffffff' },
+  { fill: 'oklch(0.66 0.21 353)', text: '#ffffff' },
+  { fill: 'oklch(0.70 0.13 155)', text: '#08200f' },
+  { fill: 'oklch(0.62 0.20 25)',  text: '#ffffff' },
+  { fill: 'oklch(0.63 0.17 300)', text: '#ffffff' },
+];
+
+const DEFAULTS = {
+  g: ['Group A', 'Group B', 'Group C', 'Group D', 'Group E', 'Group F'],
+  o: ['Pizza party 🍕', 'Present first', 'Pick the music 🎵', 'Clean-up crew',
+      'Extra 10 minutes', 'Snack run', 'Front-row seats', 'Design the poster'],
+};
+
+const MAX_ENTRIES = 100;
+const LS = {
+  get(key, fallback) {
+    try {
+      const v = localStorage.getItem('pairwheel.' + key);
+      return v === null ? fallback : JSON.parse(v);
+    } catch { return fallback; }
+  },
+  set(key, value) {
+    try { localStorage.setItem('pairwheel.' + key, JSON.stringify(value)); } catch {}
+  },
+};
+
+function escapeHTML(s) {
+  return s.replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+/* ============ Audio ============ */
+const Sound = {
+  ctx: null,
+  enabled: LS.get('sound', true),
+  ensure() {
+    if (!this.ctx) {
+      try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  },
+  tone(freq, when, dur, type, peak) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(peak, when + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start(when);
+    osc.stop(when + dur + 0.02);
+  },
+  tick() {
+    if (!this.enabled || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.tone(2100, t, 0.035, 'square', 0.045);
+    this.tone(330, t, 0.05, 'triangle', 0.05);
+  },
+  ding() {
+    if (!this.enabled) return;
+    this.ensure();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.tone(880, t, 0.35, 'triangle', 0.12);
+    this.tone(1320, t + 0.02, 0.4, 'sine', 0.06);
+  },
+  fanfare() {
+    if (!this.enabled) return;
+    this.ensure();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+      this.tone(f, t + i * 0.09, 0.5, 'triangle', 0.11);
+      this.tone(f / 2, t + i * 0.09, 0.4, 'sine', 0.05);
+    });
+  },
+};
+
+/* ============ Wheel ============ */
+class Wheel {
+  constructor(opts) {
+    this.canvas = opts.canvas;
+    this.pointerEl = opts.pointerEl;
+    this.pointerAngle = opts.pointerAngle;  // 0 = pointer on right edge, PI = left edge
+    this.ctx = this.canvas.getContext('2d');
+    this.entries = [];
+    this.labels = [];
+    this.rot = rand() * TAU;
+    this.spinning = false;
+    this.anim = null;
+    this.lastTickIdx = -1;
+    this.size = 0;
+    this.hasResult = false;   // once a winner lands, stop idling so it stays under the pointer
+
+    const ro = new ResizeObserver(() => this.resize());
+    ro.observe(this.canvas);
+    this.resize();
+  }
+
+  resize() {
+    const rect = this.canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const px = Math.max(120, Math.round(rect.width));
+    if (px === this.size && this.dpr === dpr) return;
+    this.size = px;
+    this.dpr = dpr;
+    this.canvas.width = px * dpr;
+    this.canvas.height = px * dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.layoutLabels();
+    this.draw();
+  }
+
+  setEntries(list) {
+    this.entries = list.slice(0, MAX_ENTRIES);
+    this.layoutLabels();
+    this.draw();
+  }
+
+  colorAt(i) {
+    const n = this.entries.length;
+    const p = PALETTE.length;
+    let idx = i % p;
+    // avoid the last segment matching the first at the wrap seam
+    if (n > 1 && i === n - 1 && idx === 0) idx = Math.floor(p / 2);
+    return PALETTE[idx];
+  }
+
+  layoutLabels() {
+    const n = this.entries.length;
+    this.labels = [];
+    if (!n) return;
+    const r = this.size / 2;
+    const seg = TAU / n;
+    const inner = r * 0.30;
+    const outer = r * 0.90;
+    const maxW = outer - inner - 6;
+    const midR = inner + (outer - inner) * 0.5;
+    const maxH = Math.max(9, 2 * Math.sin(Math.min(seg, Math.PI) / 2) * midR * 0.7);
+    const base = Math.min(r * 0.115, maxH, 28);
+    const ctx = this.ctx;
+
+    for (const text of this.entries) {
+      let fs = Math.max(9, base);
+      let label = text;
+      ctx.font = `700 ${fs}px ${getComputedStyle(document.body).fontFamily}`;
+      let w = ctx.measureText(label).width;
+      while (w > maxW && fs > 10) {
+        fs -= 1;
+        ctx.font = `700 ${fs}px ${getComputedStyle(document.body).fontFamily}`;
+        w = ctx.measureText(label).width;
+      }
+      if (w > maxW) {
+        while (label.length > 1 && ctx.measureText(label + '…').width > maxW) {
+          label = label.slice(0, -1);
+        }
+        label += '…';
+      }
+      this.labels.push({ label, fs });
+    }
+  }
+
+  draw() {
+    const ctx = this.ctx;
+    const s = this.size;
+    const r = s / 2;
+    const n = this.entries.length;
+    ctx.clearRect(0, 0, s, s);
+
+    if (!n) {
+      ctx.beginPath();
+      ctx.arc(r, r, r * 0.94, 0, TAU);
+      ctx.fillStyle = 'oklch(0.16 0.005 110)';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'oklch(0.3 0.01 110)';
+      ctx.stroke();
+      ctx.fillStyle = 'oklch(0.7 0.015 110)';
+      ctx.font = `600 ${Math.max(12, r * 0.09)}px ${getComputedStyle(document.body).fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Add entries below', r, r);
+      return;
+    }
+
+    const seg = TAU / n;
+    const outerR = r * 0.94;
+
+    ctx.save();
+    ctx.translate(r, r);
+
+    // segments
+    for (let i = 0; i < n; i++) {
+      const a0 = this.rot + i * seg;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, outerR, a0, a0 + seg);
+      ctx.closePath();
+      ctx.fillStyle = this.colorAt(i).fill;
+      ctx.fill();
+      if (n > 1) {
+        ctx.lineWidth = Math.max(1, r * 0.006);
+        ctx.strokeStyle = 'oklch(0.11 0 0 / 0.85)';
+        ctx.stroke();
+      }
+    }
+
+    // labels
+    const labelR = r * 0.90;
+    for (let i = 0; i < n; i++) {
+      const L = this.labels[i];
+      if (!L) continue;
+      ctx.save();
+      ctx.rotate(this.rot + (i + 0.5) * seg);
+      ctx.font = `700 ${L.fs}px ${getComputedStyle(document.body).fontFamily}`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = this.colorAt(i).text;
+      ctx.fillText(L.label, labelR, 0);
+      ctx.restore();
+    }
+
+    // rim
+    ctx.beginPath();
+    ctx.arc(0, 0, outerR, 0, TAU);
+    ctx.lineWidth = Math.max(3, r * 0.028);
+    ctx.strokeStyle = 'oklch(0.25 0.01 110)';
+    ctx.stroke();
+
+    // pegs at segment boundaries
+    if (n >= 2 && n <= 28) {
+      for (let i = 0; i < n; i++) {
+        const a = this.rot + i * seg;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * outerR, Math.sin(a) * outerR, Math.max(2, r * 0.014), 0, TAU);
+        ctx.fillStyle = 'oklch(0.93 0.01 110)';
+        ctx.fill();
+      }
+    }
+
+    ctx.restore();
+  }
+
+  currentIndex() {
+    const n = this.entries.length;
+    if (!n) return -1;
+    const seg = TAU / n;
+    return Math.floor(mod(this.pointerAngle - this.rot, TAU) / seg);
+  }
+
+  spin(duration) {
+    if (this.spinning || !this.entries.length) return Promise.resolve(null);
+    this.spinning = true;
+    this.lastTickIdx = this.currentIndex();
+    const start = this.rot;
+    const turns = 6 + rand() * 2.5;
+    const target = start + turns * TAU + rand() * TAU;
+
+    if (reducedMotion.matches) {
+      this.rot = mod(target, TAU);
+      this.spinning = false;
+      this.hasResult = true;
+      this.draw();
+      return Promise.resolve(this.entries[this.currentIndex()]);
+    }
+
+    return new Promise((resolve) => {
+      this.anim = { t0: performance.now(), dur: duration, start, target, resolve };
+    });
+  }
+
+  step(now) {
+    if (this.anim) {
+      const { t0, dur, start, target, resolve } = this.anim;
+      const p = Math.min(1, (now - t0) / dur);
+      const eased = 1 - Math.pow(1 - p, 4);
+      this.rot = start + (target - start) * eased;
+
+      const idx = this.currentIndex();
+      if (idx !== this.lastTickIdx) {
+        this.lastTickIdx = idx;
+        Sound.tick();
+        this.pointerEl.classList.add('kick');
+        clearTimeout(this._kickT);
+        this._kickT = setTimeout(() => this.pointerEl.classList.remove('kick'), 80);
+      }
+
+      this.draw();
+      if (p >= 1) {
+        this.rot = mod(target, TAU);
+        this.anim = null;
+        this.spinning = false;
+        this.hasResult = true;
+        resolve(this.entries[this.currentIndex()]);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  idle(dt) {
+    if (this.spinning || this.hasResult || reducedMotion.matches || !this.entries.length) return;
+    this.rot = mod(this.rot + dt * 0.00012, TAU);
+    this.draw();
+  }
+}
+
+/* ============ Confetti ============ */
+const Confetti = {
+  canvas: $('confetti'),
+  ctx: $('confetti').getContext('2d'),
+  parts: [],
+  running: false,
+  resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.canvas.width = innerWidth * dpr;
+    this.canvas.height = innerHeight * dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  },
+  burst() {
+    if (reducedMotion.matches) return;
+    this.resize();
+    const colors = PALETTE.map((p) => p.fill);
+    const cannons = [
+      { x: innerWidth * 0.12, y: innerHeight * 0.95, dir: -Math.PI / 3 },
+      { x: innerWidth * 0.88, y: innerHeight * 0.95, dir: -Math.PI * 2 / 3 },
+    ];
+    for (const c of cannons) {
+      for (let i = 0; i < 90; i++) {
+        const a = c.dir + (rand() - 0.5) * 0.9;
+        const v = 9 + rand() * 13;
+        this.parts.push({
+          x: c.x, y: c.y,
+          vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+          w: 5 + rand() * 6, h: 8 + rand() * 7,
+          rot: rand() * TAU, vr: (rand() - 0.5) * 0.4,
+          color: colors[Math.floor(rand() * colors.length)],
+          life: 1,
+          decay: 0.006 + rand() * 0.006,
+        });
+      }
+    }
+    this.deadline = performance.now() + 4500;
+    if (!this.running) { this.running = true; this.prevT = performance.now(); this.loop(); }
+  },
+  clear() {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.restore();
+  },
+  loop() {
+    const ctx = this.ctx;
+    const now = performance.now();
+    const k = Math.min(3, (now - (this.prevT || now)) / 16.7);  // physics normalized to 60fps
+    this.prevT = now;
+    this.clear();
+    if (now > this.deadline) this.parts = [];
+    this.parts = this.parts.filter((p) => p.life > 0 && p.y < innerHeight + 40);
+    for (const p of this.parts) {
+      p.vy += 0.28 * k;
+      p.vx *= Math.pow(0.99, k);
+      p.x += p.vx * k;
+      p.y += p.vy * k;
+      p.rot += p.vr * k;
+      p.life -= p.decay * k;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 1.6));
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * (0.4 + 0.6 * Math.abs(Math.sin(p.rot))));
+      ctx.restore();
+    }
+    if (this.parts.length) {
+      requestAnimationFrame(() => this.loop());
+    } else {
+      this.running = false;
+      this.clear();
+    }
+  },
+};
+window.addEventListener('resize', () => {
+  if (Confetti.running) Confetti.resize();
+});
+
+/* ============ App ============ */
+const wheelG = new Wheel({ canvas: $('canvasG'), pointerEl: $('ptrG'), pointerAngle: 0 });
+const wheelO = new Wheel({ canvas: $('canvasO'), pointerEl: $('ptrO'), pointerAngle: Math.PI });
+
+const taG = $('taG'), taO = $('taO');
+const els = {
+  g: { ta: taG, wheel: wheelG, count: $('countG'), last: $('lastG') },
+  o: { ta: taO, wheel: wheelO, count: $('countO'), last: $('lastO') },
+};
+
+function readEntries(ta) {
+  return ta.value.split('\n').map((s) => s.trim()).filter(Boolean);
+}
+
+function syncWheel(key, save = true) {
+  const { ta, wheel, count } = els[key];
+  const list = readEntries(ta);
+  wheel.setEntries(list);
+  count.textContent = list.length > MAX_ENTRIES ? MAX_ENTRIES + '+' : String(list.length);
+  if (save) LS.set(key === 'g' ? 'groups' : 'objects', ta.value);
+  updateSpinReady();
+}
+
+function updateSpinReady() {
+  const ok = wheelG.entries.length > 0 && wheelO.entries.length > 0;
+  const hint = $('hint');
+  if (!ok) {
+    hint.textContent = 'Add at least one entry to each wheel';
+    hint.classList.add('warn');
+  } else if (hint.classList.contains('warn')) {
+    hint.textContent = 'or press Space';
+    hint.classList.remove('warn');
+  }
+  return ok;
+}
+
+/* --- init entries from storage or defaults --- */
+taG.value = LS.get('groups', DEFAULTS.g.join('\n'));
+taO.value = LS.get('objects', DEFAULTS.o.join('\n'));
+syncWheel('g', false);
+syncWheel('o', false);
+
+let saveT;
+for (const key of ['g', 'o']) {
+  els[key].ta.addEventListener('input', () => {
+    clearTimeout(saveT);
+    saveT = setTimeout(() => syncWheel(key), 200);
+  });
+}
+
+/* --- editor tools --- */
+document.querySelectorAll('.tool-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.w;
+    const { ta } = els[key];
+    let lines = readEntries(ta);
+    if (btn.dataset.act === 'shuffle') {
+      for (let i = lines.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [lines[i], lines[j]] = [lines[j], lines[i]];
+      }
+    } else if (btn.dataset.act === 'sort') {
+      lines.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    } else {
+      lines = DEFAULTS[key];
+    }
+    ta.value = lines.join('\n');
+    syncWheel(key);
+  });
+});
+
+/* --- animation loop --- */
+let prevT = performance.now();
+function frame(now) {
+  const dt = Math.min(50, now - prevT);
+  prevT = now;
+  let active = false;
+  active = wheelG.step(now) || active;
+  active = wheelO.step(now) || active;
+  if (!active && !document.hidden) {
+    wheelG.idle(dt);
+    wheelO.idle(dt);
+  }
+  scheduleFrame();
+}
+// rAF pauses in hidden/background tabs, which would freeze a spin mid-flight;
+// fall back to timers so an in-progress spin still resolves.
+function scheduleFrame() {
+  if (document.hidden) setTimeout(() => frame(performance.now()), 33);
+  else requestAnimationFrame(frame);
+}
+scheduleFrame();
+
+/* --- single-wheel spins --- */
+let pairBusy = false;
+function singleSpin(key) {
+  if (pairBusy) return;
+  const { wheel, last } = els[key];
+  if (wheel.spinning || !wheel.entries.length) return;
+  Sound.ensure();
+  lockEditors(true);
+  wheel.spin(3600 + rand() * 800).then((winner) => {
+    lockEditors(false);
+    if (winner === null) return;
+    last.textContent = winner;
+    Sound.ding();
+    maybeAutoRemove(key, winner);
+  });
+}
+$('canvasG').addEventListener('click', () => singleSpin('g'));
+$('hubG').addEventListener('click', () => singleSpin('g'));
+$('canvasO').addEventListener('click', () => singleSpin('o'));
+$('hubO').addEventListener('click', () => singleSpin('o'));
+
+function lockEditors(on) {
+  taG.readOnly = on;
+  taO.readOnly = on;
+}
+
+/* --- pair spin --- */
+const spinBtn = $('spinBoth');
+let lastPair = null;
+
+async function spinBoth() {
+  if (pairBusy || wheelG.spinning || wheelO.spinning) return;
+  if (!updateSpinReady()) return;
+  Sound.ensure();
+  pairBusy = true;
+  spinBtn.dataset.busy = '1';
+  spinBtn.querySelector('.word').textContent = '···';
+  lockEditors(false); lockEditors(true);
+
+  const pG = wheelG.spin(4400 + rand() * 500).then((w) => {
+    if (w !== null) { els.g.last.textContent = w; Sound.ding(); }
+    return w;
+  });
+  const pO = wheelO.spin(5500 + rand() * 600).then((w) => {
+    if (w !== null) { els.o.last.textContent = w; }
+    return w;
+  });
+  const [g, o] = await Promise.all([pG, pO]);
+
+  pairBusy = false;
+  spinBtn.dataset.busy = '';
+  spinBtn.querySelector('.word').textContent = 'SPIN';
+  lockEditors(false);
+  if (g === null || o === null) return;
+
+  lastPair = { g, o };
+  addHistory(g, o);
+  renderMatch(g, o);
+  showOverlay(g, o);
+  Sound.fanfare();
+  Confetti.burst();
+
+  if ($('autoRemove').checked) {
+    removeEntry('g', g);
+    removeEntry('o', o);
+  }
+}
+spinBtn.addEventListener('click', spinBoth);
+
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space' && e.code !== 'Enter') return;
+  const t = e.target;
+  if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement ||
+      t instanceof HTMLButtonElement) return;
+  if (!$('overlay').hidden) return;
+  e.preventDefault();
+  spinBoth();
+});
+
+/* --- winner removal --- */
+function removeEntry(key, value) {
+  const { ta } = els[key];
+  const lines = ta.value.split('\n');
+  const idx = lines.findIndex((l) => l.trim() === value);
+  if (idx >= 0) {
+    lines.splice(idx, 1);
+    ta.value = lines.join('\n');
+    syncWheel(key);
+  }
+}
+function maybeAutoRemove(key, winner) {
+  if ($('autoRemove').checked) removeEntry(key, winner);
+}
+
+/* --- match card & history --- */
+function renderMatch(g, o) {
+  $('matchBody').innerHTML =
+    `<div class="pair">
+       <span class="chip chip-g">${escapeHTML(g)}</span>
+       <span class="x">gets</span>
+       <span class="chip chip-o">${escapeHTML(o)}</span>
+     </div>`;
+}
+
+let history = LS.get('history', []);
+function addHistory(g, o) {
+  history.unshift({ g, o, t: Date.now() });
+  history = history.slice(0, 40);
+  LS.set('history', history);
+  renderHistory();
+}
+function renderHistory() {
+  $('histList').innerHTML = history.slice(0, 14).map((h) =>
+    `<li><b>${escapeHTML(h.g)}</b><span class="hx">×</span><b>${escapeHTML(h.o)}</b></li>`
+  ).join('');
+}
+$('clearHist').addEventListener('click', () => {
+  history = [];
+  LS.set('history', history);
+  renderHistory();
+});
+renderHistory();
+if (history.length) renderMatch(history[0].g, history[0].o);
+
+/* --- overlay --- */
+const overlay = $('overlay');
+let lastFocus = null;
+function showOverlay(g, o) {
+  $('ovG').textContent = g;
+  $('ovO').textContent = o;
+  lastFocus = document.activeElement;
+  overlay.hidden = false;
+  $('ovAgain').focus();
+}
+function hideOverlay() {
+  overlay.hidden = true;
+  if (lastFocus) lastFocus.focus();
+}
+$('ovClose').addEventListener('click', hideOverlay);
+$('ovAgain').addEventListener('click', () => { hideOverlay(); spinBoth(); });
+$('ovRemove').addEventListener('click', () => {
+  if (lastPair) {
+    removeEntry('g', lastPair.g);
+    removeEntry('o', lastPair.o);
+  }
+  hideOverlay();
+});
+overlay.addEventListener('click', (e) => { if (e.target === overlay) hideOverlay(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !overlay.hidden) hideOverlay();
+});
+
+/* --- settings --- */
+$('autoRemove').checked = LS.get('autoRemove', false);
+$('autoRemove').addEventListener('change', (e) => LS.set('autoRemove', e.target.checked));
+
+const soundBtn = $('soundBtn');
+function renderSound() {
+  soundBtn.textContent = Sound.enabled ? '🔊 Sound on' : '🔇 Sound off';
+  soundBtn.setAttribute('aria-pressed', String(Sound.enabled));
+}
+soundBtn.addEventListener('click', () => {
+  Sound.enabled = !Sound.enabled;
+  LS.set('sound', Sound.enabled);
+  if (Sound.enabled) Sound.ensure();
+  renderSound();
+});
+renderSound();
+
+$('fsBtn').addEventListener('click', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+</script>
+</body>
+</html>
