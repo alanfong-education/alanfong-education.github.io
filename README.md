@@ -4,6 +4,8 @@ Public teaching resources, grouped under [AlanFong Education](https://alanfong-e
 
 ## Public routes
 
+- [Knowledge Cards](https://alanfong-education.github.io/knowledge-cards/)
+
 - [UGA past papers bank](https://alanfong-education.github.io/uga-past-papers-bank/)
 - [Homepage](https://alanfong-education.github.io/)
 - [PairWheel](https://alanfong-education.github.io/pairwheel/)
@@ -40,3 +42,9 @@ From this directory, run `python3 -m http.server 8947 --bind 127.0.0.1 --directo
 ## UGA past papers bank — 6 October 2026
 
 `docs/uga-past-papers-bank/index.html` is an exact copy of the source S5UT2_Past_Assessment_Bank.html: 57 questions from four past S5 UT2 assessments, with 32 figures and embedded offline libraries. Source SHA-256: `730b3a73fe2c57804411d12af917ed6b23f791732c71cccd1651dd9eb198ceb4`. Existing source issue notes and AI solution labels remain present. The HTML contains item-level difficulty aggregates, not student records. Saved state uses its own `ugas5ut2:` prefix.
+
+## Knowledge Cards — 6 October 2026
+
+`docs/knowledge-cards/index.html` is an exact copy of `Concept clearer/cards/Knowledge_Cards.html`, covering S5 Chapter 3 (More about Graphs of Functions) and Chapter 4 (Variations). It loads KaTeX from jsDelivr. Source SHA-256: `df09bd74df13c3e1b49cd5d10f381c65ea445c97bcb3478b9e8fedee46b2c6e0`. Update the original project first, then copy the generated HTML here.
+
+Teacher/debug source-page links refer to local textbook images and are not included in this HTML-only publication. Normal student page references are plain text.
