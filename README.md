@@ -1,9 +1,10 @@
 # AlanFong Education — GitHub Pages pilot
 
-Three existing public teaching resources, grouped under [AlanFong Education](https://alanfong-education.github.io/).
+Public teaching resources, grouped under [AlanFong Education](https://alanfong-education.github.io/).
 
 ## Public routes
 
+- [UGA past papers bank](https://alanfong-education.github.io/uga-past-papers-bank/)
 - [Homepage](https://alanfong-education.github.io/)
 - [PairWheel](https://alanfong-education.github.io/pairwheel/)
 - [Circle Reference Visualizer](https://alanfong-education.github.io/circle-visualizer/)
@@ -35,3 +36,7 @@ The three app files were compared byte for byte with their existing Netlify rele
 ## Local preview
 
 From this directory, run `python3 -m http.server 8947 --bind 127.0.0.1 --directory docs`, then open `http://127.0.0.1:8947/`.
+
+## UGA past papers bank — 6 October 2026
+
+`docs/uga-past-papers-bank/index.html` is an exact copy of the source S5UT2_Past_Assessment_Bank.html: 57 questions from four past S5 UT2 assessments, with 32 figures and embedded offline libraries. Source SHA-256: `730b3a73fe2c57804411d12af917ed6b23f791732c71cccd1651dd9eb198ceb4`. Existing source issue notes and AI solution labels remain present. The HTML contains item-level difficulty aggregates, not student records. Saved state uses its own `s5ut2bank:` prefix.
