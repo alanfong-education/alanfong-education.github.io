@@ -1,24 +1,24 @@
-# AlanFong Education — GitHub Pages pilot
+# Tung Tung Tung SaFong Education — GitHub Pages pilot
 
-Public teaching resources, grouped under [AlanFong Education](https://alanfong-education.github.io/).
+Public teaching resources, grouped under [Tung Tung Tung SaFong Education](https://tung-tung-tung-safong-education.github.io/).
 
 ## Public routes
 
-- [UGA MC Trainer](https://alanfong-education.github.io/uga-mc-trainer/)
+- [UGA MC Trainer](https://tung-tung-tung-safong-education.github.io/uga-mc-trainer/)
 
-- [Knowledge Cards](https://alanfong-education.github.io/knowledge-cards/)
+- [Knowledge Cards](https://tung-tung-tung-safong-education.github.io/knowledge-cards/)
 
-- [UGA past papers bank](https://alanfong-education.github.io/uga-past-papers-bank/)
-- [Homepage](https://alanfong-education.github.io/)
-- [PairWheel](https://alanfong-education.github.io/pairwheel/)
-- [Circle Reference Visualizer](https://alanfong-education.github.io/circle-visualizer/)
-- [Circle Geometry Mastery Sheet](https://alanfong-education.github.io/circle-mastery/)
+- [UGA past papers bank](https://tung-tung-tung-safong-education.github.io/uga-past-papers-bank/)
+- [Homepage](https://tung-tung-tung-safong-education.github.io/)
+- [PairWheel](https://tung-tung-tung-safong-education.github.io/pairwheel/)
+- [Circle Reference Visualizer](https://tung-tung-tung-safong-education.github.io/circle-visualizer/)
+- [Circle Geometry Mastery Sheet](https://tung-tung-tung-safong-education.github.io/circle-mastery/)
 
-The display name is **AlanFong Education**. Use stable, lowercase project slugs so later category changes do not require changing shared links.
+The display name is **Tung Tung Tung SaFong Education**. Use stable, lowercase project slugs so later category changes do not require changing shared links.
 
 ## Structure and updates
 
-The free GitHub organisation `alanfong-education` owns the public repository `alanfong-education/alanfong-education.github.io`. Its owner is the personal account `aiismypower-cell`.
+The free GitHub organisation `tung-tung-tung-safong-education` owns the public repository `tung-tung-tung-safong-education/tung-tung-tung-safong-education.github.io`. Its owner is the personal account `aiismypower-cell`.
 
 GitHub Pages publishes from branch **main**, folder **/docs**, with HTTPS enforced. Push reviewed changes to `main`, wait for the **pages-build-deployment** workflow, then verify affected public routes and interactions. The local project generators remain authoritative for future app changes; copy only intended public release files into this repository.
 
