@@ -4,6 +4,8 @@ Public teaching resources, grouped under [AlanFong Education](https://alanfong-e
 
 ## Public routes
 
+- [UGA MC Trainer](https://alanfong-education.github.io/uga-mc-trainer/)
+
 - [Knowledge Cards](https://alanfong-education.github.io/knowledge-cards/)
 
 - [UGA past papers bank](https://alanfong-education.github.io/uga-past-papers-bank/)
@@ -48,3 +50,9 @@ From this directory, run `python3 -m http.server 8947 --bind 127.0.0.1 --directo
 `docs/knowledge-cards/index.html` is an exact copy of `Concept clearer/cards/Knowledge_Cards.html`, covering S5 Chapter 3 (More about Graphs of Functions) and Chapter 4 (Variations). It loads KaTeX from jsDelivr. Source SHA-256: `df09bd74df13c3e1b49cd5d10f381c65ea445c97bcb3478b9e8fedee46b2c6e0`. Update the original project first, then copy the generated HTML here.
 
 Teacher/debug source-page links refer to local textbook images and are not included in this HTML-only publication. Normal student page references are plain text.
+
+## UGA MC Trainer — 7 October 2026
+
+`docs/uga-mc-trainer/index.html` is an exact copy of the current standalone `school MC version/UGA MC Trainer.html`. It contains 810 source questions across 19 school papers with worked solutions and authored reassessments. All scripts, fonts and figures are embedded. Source SHA-256: `b725c4b7953fb21524f46a54ca07c79a5e606f36a9e92f4ab8a7f1539aa7961f`. Update the original trainer first, then copy the release HTML here.
+
+The app keeps progress in browser local storage with UGA-specific keys and supports `.ugamctrainer` profile export/import. Progress stored in the native app or another website does not transfer automatically; use profile export/import. Only the standalone app is published, with no saved profiles, original PDFs or local review files.
